@@ -47,7 +47,9 @@ PRODUCT_SPECS_KNOWN = {
 }
 
 def get_driver():
-    """Setup headless Chrome driver."""
+    from selenium.webdriver.chrome.service import Service
+    from webdriver_manager.chrome import ChromeDriverManager
+    
     opts = Options()
     opts.add_argument("--headless")
     opts.add_argument("--no-sandbox")
@@ -55,7 +57,9 @@ def get_driver():
     opts.add_argument("--window-size=1280,900")
     opts.add_argument("--disable-blink-features=AutomationControlled")
     opts.add_experimental_option("excludeSwitches", ["enable-automation"])
-    driver = webdriver.Chrome(options=opts)
+    
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=opts)
     return driver
 
 
