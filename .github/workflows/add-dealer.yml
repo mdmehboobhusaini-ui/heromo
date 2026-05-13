@@ -14,21 +14,35 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
       - name: Setup Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
-      - name: Install deps
-        run: pip install requests beautifulsoup4
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: pip install requests beautifulsoup4 selenium webdriver-manager
+
       - name: Run scraper
-        run: python scripts/scraper.py "${{ github.event.inputs.dealer_url }}" "${{ github.event.inputs.folder_name }}"
+        run: |
+          python scripts/scraper.py \
+            --url "${{ github.event.inputs.dealer_url }}" \
+            --folder "${{ github.event.inputs.folder_name }}"
+
       - name: Commit changes
         run: |
           git config user.email "bot@hero.com"
           git config user.name "Hero Bot"
           git add .
-          git commit -m "Add dealer: ${{ github.event.inputs.folder_name }}"
+          git commit -m "Add dealer: ${{ github.event.inputs.folder_name }}" || echo "Nothing to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
