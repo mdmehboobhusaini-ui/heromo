@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dealer Notice Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: #333; margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; font-size: 0.9rem; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .checkbox-group { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; }
+        button { width: 100%; background: #E31837; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button:hover { background: #B9122B; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        #status { margin-top: 15px; text-align: center; font-size: 0.9rem; font-weight: 500; }
+        .success { color: #25D366; }
+        .error { color: #E31837; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Update Offer Notice</h2>
+    
+    <div class="form-group" style="margin-bottom: 25px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
+        <label>Dealer Password</label>
+        <input type="password" id="dealerPwd" placeholder="Enter your 6-digit password">
+    </div>
+
+    <div class="checkbox-group">
+        <input type="checkbox" id="enabled" checked>
+        <label for="enabled" style="margin:0;">Enable Notice Bar</label>
+    </div>
+
+    <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="title" placeholder="e.g. Navratri Special Offer!">
+    </div>
+
+    <div class="form-group">
+        <label>Message/Text</label>
+        <input type="text" id="text" placeholder="e.g. Get ₹5000 exchange bonus.">
+    </div>
+
+    <div class="form-group">
+        <label>Button Text (Optional)</label>
+        <input type="text" id="cta_text" placeholder="e.g. Call Now">
+    </div>
+
+    <div class="form-group">
+        <label>Button Phone Number (Optional)</label>
+        <input type="text" id="cta_phone" placeholder="e.g. +919876543210">
+    </div>
+
+    <button id="saveBtn" onclick="saveNotice()">Save & Publish</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    // Auto-detect folder name from URL (e.g. /dealers/folder-name/admin.html)
+    // When served via custom domain through Worker, the folder name is injected by the worker in the background,
+    // but the client browser sees the root domain. So we'll let the worker infer the folder from the domain!
+    // WAIT, if the client is on www.dealer1.com, window.location.pathname is just /admin.html
+    // The worker knows which folder it belongs to based on dealers.json.
+    // So we don't even need to send the folder name! We just send the request to /api/update-notice, 
+    // and the worker can infer the folder from the host! Let's send the host instead of folder.
+    const currentHost = window.location.hostname;
+
+    // Load current notice on page load
+    window.onload = async () => {
+        try {
+            const res = await fetch('notice.json');
+            const notice = await res.json();
+            document.getElementById('enabled').checked = notice.enabled;
+            document.getElementById('title').value = notice.title || '';
+            document.getElementById('text').value = notice.text || '';
+            document.getElementById('cta_text').value = notice.cta_text || '';
+            document.getElementById('cta_phone').value = notice.cta_phone || '';
+        } catch(e) {
+            console.log("No existing notice.json found or failed to load locally.");
+        }
+    };
+
+    async function saveNotice() {
+        const pwd = document.getElementById('dealerPwd').value.trim();
+        if(!pwd) {
+            showStatus("Please enter your Dealer Password.", false);
+            return;
+        }
+
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerText = "Publishing...";
+
+        const newNotice = {
+            enabled: document.getElementById('enabled').checked,
+            title: document.getElementById('title').value,
+            text: document.getElementById('text').value,
+            cta_text: document.getElementById('cta_text').value,
+            cta_phone: document.getElementById('cta_phone').value
+        };
+
+        try {
+            const res = await fetch('/api/update-notice', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    host: currentHost,
+                    password: pwd, 
+                    noticeData: newNotice 
+                })
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                showStatus("Notice updated successfully! Changes will be live in ~1 minute.", true);
+            } else {
+                showStatus("Error: " + (data.error || "Failed to update"), false);
+            }
+        } catch(err) {
+            showStatus("Network Error. Please try again.", false);
+        }
+
+        btn.disabled = false;
+        btn.innerText = "Save & Publish";
+    }
+
+    function showStatus(msg, isSuccess) {
+        const el = document.getElementById('status');
+        el.innerText = msg;
+        el.className = isSuccess ? 'success' : 'error';
+    }
+</script>
+
+</body>
+</html>
